@@ -9,5 +9,16 @@
     "review_text": "kotoba grammarnya sulit dipahami",
     "confidence": 70,
     "backup_file": "data/backups/backup_Hey Japan_20250612_105221.json"
+  },
+  {
+    "timestamp": "2025-06-12T12:16:30.181264",
+    "app_name": "Kanji Study",
+    "sentiment": "negative",
+    "features": [
+      "kanji"
+    ],
+    "review_text": "kanji kurang bisa dipahami , jelek",
+    "confidence": 70,
+    "backup_file": "data/backups/backup_Kanji Study_20250612_121638.json"
   }
 ]

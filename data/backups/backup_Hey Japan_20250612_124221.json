@@ -1,0 +1,29 @@
+{
+  "app_name": "Hey Japan",
+  "timestamp": "2025-06-12T12:42:07.864081",
+  "data": {
+    "kotoba": {
+      "positive": 66,
+      "negative": 1
+    },
+    "kanji": {
+      "positive": 45,
+      "negative": 1
+    },
+    "bunpou": {
+      "positive": 12,
+      "negative": 0
+    }
+  },
+  "prediction_info": {
+    "sentiment": "negative",
+    "confidence": 80,
+    "features": [
+      "kotoba",
+      "kanji"
+    ],
+    "text_length": 63,
+    "processed_text": "kanji buruk jelek dipahami dengan baik masih perlu peningkatan",
+    "method": "rule_based"
+  }
+}
