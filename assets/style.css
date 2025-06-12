@@ -1,0 +1,276 @@
+/* Custom CSS for Japanese App Sentiment Analysis */
+
+/* Main container styling */
+.main-container {
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+/* Header styling */
+.header-title {
+    color: #1f2937;
+    font-size: 2.5rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.header-subtitle {
+    color: #6b7280;
+    font-size: 1.2rem;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* Card styling */
+.metric-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Feature colors */
+.kanji-color {
+    color: #FF6B6B;
+    font-weight: 600;
+}
+
+.kotoba-color {
+    color: #4ECDC4;
+    font-weight: 600;
+}
+
+.bunpou-color {
+    color: #45B7D1;
+    font-weight: 600;
+}
+
+/* Progress bar styling */
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-kanji {
+    background: linear-gradient(90deg, #FF6B6B, #FF8E8E);
+}
+
+.progress-kotoba {
+    background: linear-gradient(90deg, #4ECDC4, #6ED5D0);
+}
+
+.progress-bunpou {
+    background: linear-gradient(90deg, #45B7D1, #6BC5E8);
+}
+
+/* Table styling */
+.custom-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.custom-table th {
+    background: #f8fafc;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.custom-table td {
+    padding: 12px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #6b7280;
+}
+
+.custom-table tr:hover {
+    background: #f9fafb;
+}
+
+/* Button styling */
+.custom-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.custom-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Sidebar styling */
+.sidebar-content {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* Alert styling */
+.success-alert {
+    background: #d1fae5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+    padding: 12px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.warning-alert {
+    background: #fef3c7;
+    border: 1px solid #fde68a;  
+    color: #92400e;
+    padding: 12px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.error-alert {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 12px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+/* Input styling */
+.custom-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.custom-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Chart container */
+.chart-container {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin: 20px 0;
+}
+
+/* Footer styling */
+.footer {
+    text-align: center;
+    padding: 20px;
+    color: #6b7280;
+    font-size: 14px;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 40px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .header-title {
+        font-size: 2rem;
+    }
+    
+    .metric-card {
+        padding: 15px;
+    }
+    
+    .custom-table {
+        font-size: 14px;
+    }
+}
+
+/* Loading spinner */
+.loading-spinner {
+    border: 4px solid #f3f4f6;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Prediction result styling */
+.prediction-result {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.prediction-positive {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.prediction-negative {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+/* Feature badge */
+.feature-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 2px;
+}
+
+.badge-kanji {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-kotoba {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-bunpou {
+    background: #dbeafe;
+    color: #1e40af;
+}

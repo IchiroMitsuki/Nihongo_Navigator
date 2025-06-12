@@ -1,0 +1,13 @@
+[
+  {
+    "timestamp": "2025-06-12T10:51:46.543785",
+    "app_name": "Hey Japan",
+    "sentiment": "negative",
+    "features": [
+      "bunpou"
+    ],
+    "review_text": "kotoba grammarnya sulit dipahami",
+    "confidence": 70,
+    "backup_file": "data/backups/backup_Hey Japan_20250612_105221.json"
+  }
+]

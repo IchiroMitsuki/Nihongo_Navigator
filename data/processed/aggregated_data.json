@@ -1,0 +1,167 @@
+{
+  "applications": {
+    "Mazii": {
+      "kanji": {
+        "positive": 57,
+        "negative": 0,
+        "total": 57,
+        "percentage": 100.0
+      },
+      "kotoba": {
+        "positive": 32,
+        "negative": 0,
+        "total": 32,
+        "percentage": 100.0
+      },
+      "bunpou": {
+        "positive": 26,
+        "negative": 0,
+        "total": 26,
+        "percentage": 100.0
+      },
+      "overall": {
+        "positive": 115,
+        "negative": 0,
+        "total": 115,
+        "percentage": 100.0
+      }
+    },
+    "Obenkyo": {
+      "bunpou": {
+        "positive": 5,
+        "negative": 0,
+        "total": 5,
+        "percentage": 100.0
+      },
+      "kanji": {
+        "positive": 29,
+        "negative": 0,
+        "total": 29,
+        "percentage": 100.0
+      },
+      "kotoba": {
+        "positive": 14,
+        "negative": 0,
+        "total": 14,
+        "percentage": 100.0
+      },
+      "overall": {
+        "positive": 48,
+        "negative": 0,
+        "total": 48,
+        "percentage": 100.0
+      }
+    },
+    "HeyJapan": {
+      "kotoba": {
+        "positive": 66,
+        "negative": 0,
+        "total": 66,
+        "percentage": 100.0
+      },
+      "kanji": {
+        "positive": 45,
+        "negative": 0,
+        "total": 45,
+        "percentage": 100.0
+      },
+      "bunpou": {
+        "positive": 12,
+        "negative": 0,
+        "total": 12,
+        "percentage": 100.0
+      },
+      "overall": {
+        "positive": 123,
+        "negative": 0,
+        "total": 123,
+        "percentage": 100.0
+      }
+    },
+    "JaSensei": {
+      "kanji": {
+        "positive": 8,
+        "negative": 0,
+        "total": 8,
+        "percentage": 100.0
+      },
+      "kotoba": {
+        "positive": 3,
+        "negative": 0,
+        "total": 3,
+        "percentage": 100.0
+      },
+      "bunpou": {
+        "positive": 6,
+        "negative": 0,
+        "total": 6,
+        "percentage": 100.0
+      },
+      "overall": {
+        "positive": 17,
+        "negative": 0,
+        "total": 17,
+        "percentage": 100.0
+      }
+    },
+    "MigiJLPT": {
+      "kotoba": {
+        "positive": 10,
+        "negative": 0,
+        "total": 10,
+        "percentage": 100.0
+      },
+      "bunpou": {
+        "positive": 6,
+        "negative": 0,
+        "total": 6,
+        "percentage": 100.0
+      },
+      "kanji": {
+        "positive": 18,
+        "negative": 0,
+        "total": 18,
+        "percentage": 100.0
+      },
+      "overall": {
+        "positive": 34,
+        "negative": 0,
+        "total": 34,
+        "percentage": 100.0
+      }
+    },
+    "KanjiStudy": {
+      "kanji": {
+        "positive": 187,
+        "negative": 0,
+        "total": 187,
+        "percentage": 100.0
+      },
+      "bunpou": {
+        "positive": 12,
+        "negative": 0,
+        "total": 12,
+        "percentage": 100.0
+      },
+      "kotoba": {
+        "positive": 33,
+        "negative": 1,
+        "total": 34,
+        "percentage": 97.1
+      },
+      "overall": {
+        "positive": 232,
+        "negative": 1,
+        "total": 233,
+        "percentage": 99.6
+      }
+    }
+  },
+  "features": ["kanji", "kotoba", "bunpou"],
+  "metadata": {
+    "total_reviews": 570,
+    "total_positive": 569,
+    "total_negative": 1,
+    "last_updated": "2024-06-12"
+  }
+}

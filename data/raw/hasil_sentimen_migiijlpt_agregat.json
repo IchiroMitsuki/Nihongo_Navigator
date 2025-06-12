@@ -1,0 +1,14 @@
+{
+  "kotoba": {
+    "positive": 10,
+    "negative": 0
+  },
+  "bunpou": {
+    "positive": 6,
+    "negative": 0
+  },
+  "kanji": {
+    "positive": 18,
+    "negative": 0
+  }
+}
