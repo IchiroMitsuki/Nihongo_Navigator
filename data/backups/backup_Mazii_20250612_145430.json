@@ -1,0 +1,28 @@
+{
+  "app_name": "Mazii",
+  "timestamp": "2025-06-12T14:54:20.941032",
+  "data": {
+    "kanji": {
+      "positive": 58,
+      "negative": 0
+    },
+    "kotoba": {
+      "positive": 32,
+      "negative": 0
+    },
+    "bunpou": {
+      "positive": 26,
+      "negative": 0
+    }
+  },
+  "prediction_info": {
+    "sentiment": "positive",
+    "confidence": 50,
+    "features": [
+      "kanji"
+    ],
+    "text_length": 43,
+    "processed_text": "kanji kotoba sdsd sdaaaaaaaaaaaaaaaaaafasdf",
+    "method": "rule_based"
+  }
+}

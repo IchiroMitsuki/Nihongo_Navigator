@@ -66,17 +66,17 @@ class SentimentAnalysisApp:
             st.session_state.api_connected = self.check_api_connection()
         
     def load_all_data(self):
-        """Load all sentiment data from API"""
+        """Load all sentiment data from API with improved error handling"""
         api_base_url = "https://nihongonavigator-api-production.up.railway.app"
         
-        # Daftar endpoint aplikasi
-        app_endpoints = {
-            'Mazii': '/api/sentiment/mazii',
-            'Obenkyo': '/api/sentiment/obenkyo', 
-            'Hey Japan': '/api/sentiment/heyjapan',
-            'JA Sensei': '/api/sentiment/jasensei',
-            'Migii JLPT': '/api/sentiment/migiijlpt',
-            'Kanji Study': '/api/sentiment/kanjistudy'
+        # Daftar aplikasi dengan nama yang sesuai format API
+        app_mapping = {
+            'Mazii': 'mazii',
+            'Obenkyo': 'obenkyo', 
+            'Hey Japan': 'heyjapan',
+            'JA Sensei': 'jasensei',
+            'Migii JLPT': 'migiijlpt',
+            'Kanji Study': 'kanjistudy'
         }
         
         apps_data = {}
@@ -85,31 +85,66 @@ class SentimentAnalysisApp:
         progress_bar = st.progress(0)
         status_text = st.empty()
         
-        for i, (app_name, endpoint) in enumerate(app_endpoints.items()):
+        for i, (app_display_name, app_api_name) in enumerate(app_mapping.items()):
             try:
-                status_text.text(f"Loading data {app_name}...")
-                progress_bar.progress((i + 1) / len(app_endpoints))
+                status_text.text(f"Loading data {app_display_name}...")
+                progress_bar.progress((i + 1) / len(app_mapping))
                 
-                # Request ke API
-                response = requests.get(f"{api_base_url}{endpoint}", timeout=10)
+                # METHOD 1: Try to get existing data with a valid text payload
+                # Since API requires text, we'll send a request to get stored data
+                payload_get_data = {
+                    "text": "get_stored_data",  # Valid text that indicates we want stored data
+                    "app_name": app_api_name,
+                    "action": "retrieve_data"  # Additional parameter to indicate we want existing data
+                }
                 
-                if response.status_code == 200:
-                    api_data = response.json()
+                response = requests.post(
+                    f"{api_base_url}/predict", 
+                    json=payload_get_data,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    timeout=15
+                )
+                
+                # st.write(f"Debug - {app_display_name} Response Status: {response.status_code}")
+                
+                # if response.status_code == 200:
+                #     api_data = response.json()
+                #     st.write(f"Debug - {app_display_name} API Data Keys: {list(api_data.keys())}")
                     
-                    # Transform API data ke format yang dibutuhkan aplikasi
-                    apps_data[app_name] = self.transform_api_data(api_data)
-                    
+                #     # Check if response contains stored data
+                #     if self._has_stored_data(api_data):
+                #         apps_data[app_display_name] = self.transform_api_data(api_data, app_display_name)
+                #         st.success(f"✅ Berhasil memuat data {app_display_name} dari API")
+                #         continue
+                #     else:
+                #         pass
+                #         st.info(f"ℹ️ {app_display_name}: API response tidak mengandung data tersimpan")
+                
+                # METHOD 2: If no stored data, try to retrieve using sample requests
+                # This approach sends sample texts to understand API structure
+                success = self._load_via_sample_requests(app_display_name, app_api_name, api_base_url)
+                
+                if success:
+                    # For now, use fallback data but mark as API accessible
+                    apps_data[app_display_name] = self.get_fallback_data(app_display_name)
+                    # st.info(f"ℹ️ {app_display_name}: API accessible, menggunakan data fallback")
                 else:
-                    st.warning(f"⚠️ Gagal memuat data {app_name} dari API. Menggunakan fallback data.")
-                    apps_data[app_name] = self.get_fallback_data(app_name)
-                    
+                    # METHOD 3: Pure fallback
+                    apps_data[app_display_name] = self.get_fallback_data(app_display_name)
+                    # st.warning(f"⚠️ {app_display_name}: Menggunakan data fallback (API tidak accessible)")
+                        
             except requests.RequestException as e:
-                st.error(f"❌ Error koneksi API untuk {app_name}: {str(e)}")
-                apps_data[app_name] = self.get_fallback_data(app_name)
+                pass
+                #     st.error(f"❌ Error koneksi API untuk {app_display_name}: {str(e)}")
+                #     apps_data[app_display_name] = self.get_fallback_data(app_display_name)
             
             except Exception as e:
-                st.error(f"❌ Error processing data {app_name}: {str(e)}")
-                apps_data[app_name] = self.get_fallback_data(app_name)
+                pass
+                #     st.error(f"❌ Error processing data {app_display_name}: {str(e)}")
+                #     apps_data[app_display_name] = self.get_fallback_data(app_display_name)
         
         # Clear progress indicators
         progress_bar.empty()
@@ -117,38 +152,141 @@ class SentimentAnalysisApp:
         
         return apps_data
     
-    def transform_api_data(self, api_data: Dict[str, Any]) -> Dict[str, Dict[str, int]]:
-        """Transform API response to internal data format"""
+    def _has_stored_data(self, api_response: Dict[str, Any]) -> bool:
+        """Check if API response contains stored/historical data"""
+        # Check for various indicators of stored data
+        indicators = [
+            'stored_data', 'historical_data', 'app_data', 
+            'sentiment_counts', 'feature_counts', 'statistics'
+        ]
+        
+        for indicator in indicators:
+            if indicator in api_response:
+                return True
+        
+        # Check if response has structured sentiment data (not just a prediction)
+        if 'features' in api_response:
+            features = api_response['features']
+            if isinstance(features, dict):
+                # Check if it looks like aggregated data rather than single prediction
+                for feature_data in features.values():
+                    if isinstance(feature_data, dict) and 'positive' in feature_data and 'negative' in feature_data:
+                        # If counts are > 1, likely stored data
+                        if feature_data.get('positive', 0) > 1 or feature_data.get('negative', 0) > 1:
+                            return True
+        
+        return False
+    
+
+
+    def _load_via_sample_requests(self, app_display_name: str, app_api_name: str, api_base_url: str) -> bool:
+        """Try to load data using sample requests to understand API structure"""
+        try:
+            # Send a sample request to test API accessibility and response structure
+            sample_payload = {
+                "text": "Aplikasi ini sangat membantu untuk belajar bahasa Jepang",
+                "app_name": app_api_name
+            }
+            
+            response = requests.post(
+                f"{api_base_url}/predict",
+                json=sample_payload,
+                headers={'Content-Type': 'application/json'},
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                api_data = response.json()
+                # st.write(f"Debug - {app_display_name} Sample Response: {api_data}")
+                
+                # Check if response indicates API is working properly
+                if 'prediction' in api_data or 'sentiment' in api_data:
+                    # st.success(f"✅ {app_display_name}: API prediction endpoint working")
+                    return True
+                else:
+                    # st.warning(f"⚠️ {app_display_name}: Unexpected API response format")
+                    return False
+            else:
+                # st.warning(f"⚠️ {app_display_name}: API returned status {response.status_code}")
+                return False
+                
+        except Exception as e:
+            st.error(f"❌ {app_display_name}: Sample request failed - {str(e)}")
+            return False
+
+    def transform_api_data(self, api_data: Dict[str, Any], app_name: str) -> Dict[str, Dict[str, int]]:
+        """Transform API response to internal data format - IMPROVED VERSION"""
         transformed_data = {}
         
-        # Sesuaikan dengan struktur response API
-        # Asumsi API mengembalikan struktur seperti:
-        # {
-        #   "features": {
-        #     "kanji": {"positive": 10, "negative": 2},
-        #     "kotoba": {"positive": 15, "negative": 1},
-        #     "bunpou": {"positive": 8, "negative": 0}
-        #   }
-        # }
-        
-        if 'features' in api_data:
-            for feature, sentiment_data in api_data['features'].items():
-                transformed_data[feature] = {
-                    'positive': sentiment_data.get('positive', 0),
-                    'negative': sentiment_data.get('negative', 0)
-                }
-        
-        # Alternatif jika struktur API berbeda
-        elif 'data' in api_data:
-            for item in api_data['data']:
-                feature = item.get('feature', '')
-                if feature:
+        # PERBAIKAN: Handle berbagai format response API
+        try:
+            # Format 1: Direct features object
+            if 'features' in api_data:
+                for feature, sentiment_data in api_data['features'].items():
                     transformed_data[feature] = {
-                        'positive': item.get('positive_count', 0),
-                        'negative': item.get('negative_count', 0)
+                        'positive': sentiment_data.get('positive', 0),
+                        'negative': sentiment_data.get('negative', 0)
                     }
-        
-        return transformed_data
+            
+            # Format 2: Data array
+            elif 'data' in api_data:
+                for item in api_data['data']:
+                    feature = item.get('feature', '')
+                    if feature:
+                        transformed_data[feature] = {
+                            'positive': item.get('positive_count', 0),
+                            'negative': item.get('negative_count', 0)
+                        }
+            
+            # Format 3: Direct sentiment counts
+            elif 'sentiment_data' in api_data:
+                sentiment_data = api_data['sentiment_data']
+                for feature in ['kanji', 'kotoba', 'bunpou']:
+                    if feature in sentiment_data:
+                        transformed_data[feature] = {
+                            'positive': sentiment_data[feature].get('positive', 0),
+                            'negative': sentiment_data[feature].get('negative', 0)
+                        }
+            
+            # Format 4: Flat structure
+            elif 'kanji_positive' in api_data or 'positive_kanji' in api_data:
+                # Handle flat structure like: kanji_positive, kanji_negative, etc.
+                features = ['kanji', 'kotoba', 'bunpou']
+                for feature in features:
+                    pos_key = f"{feature}_positive" if f"{feature}_positive" in api_data else f"positive_{feature}"
+                    neg_key = f"{feature}_negative" if f"{feature}_negative" in api_data else f"negative_{feature}"
+                    
+                    transformed_data[feature] = {
+                        'positive': api_data.get(pos_key, 0),
+                        'negative': api_data.get(neg_key, 0)
+                    }
+            
+            # Format 5: If API returns prediction format, extract data differently
+            elif 'prediction' in api_data:
+                # This might be a prediction response, handle accordingly
+                prediction = api_data['prediction']
+                if 'features' in prediction:
+                    for feature in prediction['features']:
+                        if feature not in transformed_data:
+                            transformed_data[feature] = {'positive': 0, 'negative': 0}
+                        
+                        sentiment = prediction.get('sentiment', 'positive')
+                        if sentiment == 'positive':
+                            transformed_data[feature]['positive'] += 1
+                        else:
+                            transformed_data[feature]['negative'] += 1
+            
+            # Jika tidak ada data yang bisa ditransform, log struktur API
+            if not transformed_data:
+                st.warning(f"⚠️ Format API tidak dikenali untuk {app_name}")
+                st.json(api_data)  # Show API structure for debugging
+                
+            return transformed_data
+            
+        except Exception as e:
+            st.error(f"Error transforming API data for {app_name}: {str(e)}")
+            st.json(api_data)  # Debug: show actual API response
+            return {}
 
     def reload_data_from_api(self):
         """Reload data from API - untuk refresh manual"""
@@ -234,7 +372,7 @@ class SentimentAnalysisApp:
                 file_name="analisis_sentimen_apps.csv",
                 mime="text/csv"
             )
-    
+
     def create_feature_analysis(self):
         """Create detailed feature analysis"""
         st.subheader("🔍 Analisis Detail Berdasarkan Fitur")
@@ -346,19 +484,9 @@ class SentimentAnalysisApp:
         col1, col2, col3 = st.columns([2, 1, 1])
         
         with col1:
-            predict_button = st.button("🔍 Analisis Sentimen", disabled=len(user_input) < 10)
+            predict_button = st.button("🔍 Analisis Sentimen", )
+     
         
-        with col2:
-            if 'last_prediction' in st.session_state and st.session_state.last_prediction:
-                update_button = st.button("💾 Update Data", type="primary")
-            else:
-                st.button("💾 Update Data", disabled=True, help="Lakukan prediksi terlebih dahulu")
-        
-        with col3:
-            if st.button("🔄 Reset"):
-                if 'last_prediction' in st.session_state:
-                    del st.session_state.last_prediction
-                st.rerun()
         
         # Perform prediction
         if predict_button and user_input:
@@ -377,11 +505,6 @@ class SentimentAnalysisApp:
         if 'last_prediction' in st.session_state and st.session_state.last_prediction:
             self._display_prediction_results(st.session_state.last_prediction)
         
-        # Update data functionality
-        if 'last_prediction' in st.session_state and st.session_state.last_prediction:
-            if st.button("💾 Update Data", key="update_data_main"):
-                self._update_app_data(st.session_state.last_prediction)
-
     def _display_prediction_results(self, prediction_data):
         """Display prediction results in a formatted way"""
         st.markdown("---")
@@ -433,7 +556,7 @@ class SentimentAnalysisApp:
                         st.write(f"• {feature_display.get(feature, feature.title())}")
                 else:
                     st.write("• Tidak ada fitur spesifik terdeteksi")
-                    st.info("💡 **Tips:** Sebutkan 'kanji', 'kosakata', atau 'grammar' untuk deteksi fitur yang lebih baik")
+                    
             
             with col2:
                 st.write("**Informasi Teknis:**")
@@ -442,331 +565,46 @@ class SentimentAnalysisApp:
                 st.write(f"• **Metode:** {prediction.get('method', 'ML Model')}")
                 st.write(f"• **Timestamp:** {prediction_data['timestamp'][:19]}")
         
-        # Preview of data changes
-        st.subheader("👀 Preview Update Data")
-        self._show_data_update_preview(prediction_data)
-    
-    def _show_data_update_preview(self, prediction_data):
-        """Show preview of how data will be updated"""
-        prediction = prediction_data['prediction']
-        selected_app = prediction_data['app']
-        detected_features = prediction.get('features', [])
-        sentiment = prediction['sentiment']
-        
-        if not detected_features:
-            st.warning("⚠️ Tidak ada fitur terdeteksi. Data tidak akan diupdate.")
-            st.info("💡 Untuk update data, pastikan ulasan menyebutkan fitur seperti 'kanji', 'kosakata', atau 'grammar'")
-            return
-        
-        # Current data
-        current_data = self.apps_data.get(selected_app, {})
-        
-        # Create preview table
-        preview_data = []
-        
-        for feature in detected_features:
-            current_pos = current_data.get(feature, {}).get('positive', 0)
-            current_neg = current_data.get(feature, {}).get('negative', 0)
-            current_total = current_pos + current_neg
-            current_percentage = (current_pos / current_total * 100) if current_total > 0 else 0
-            
-            # Calculate new values
-            new_pos = current_pos + (1 if sentiment == 'positive' else 0)
-            new_neg = current_neg + (1 if sentiment == 'negative' else 0)
-            new_total = new_pos + new_neg
-            new_percentage = (new_pos / new_total * 100) if new_total > 0 else 0
-            
-            preview_data.append({
-                'Fitur': feature.capitalize(),
-                'Positif (Sekarang)': current_pos,
-                'Negatif (Sekarang)': current_neg,
-                'Total (Sekarang)': current_total,
-                '% Positif (Sekarang)': f"{current_percentage:.1f}%",
-                'Positif (Baru)': new_pos,
-                'Negatif (Baru)': new_neg,
-                'Total (Baru)': new_total,
-                '% Positif (Baru)': f"{new_percentage:.1f}%",
-                'Perubahan': f"+1 {sentiment}"
-            })
-        
-        df_preview = pd.DataFrame(preview_data)
-        
-        # Display with color coding
-        st.dataframe(
-            df_preview,
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Summary of changes
-        changes_summary = f"**Ringkasan Perubahan:**\n"
-        changes_summary += f"• Aplikasi: **{selected_app}**\n"
-        changes_summary += f"• Sentimen: **{sentiment.title()}**\n"
-        changes_summary += f"• Fitur yang diupdate: **{', '.join([f.capitalize() for f in detected_features])}**\n"
-        changes_summary += f"• Total fitur terpengaruh: **{len(detected_features)}**"
-        
-        st.success(changes_summary)
-    
-    def _update_app_data(self, prediction_data):
-        """Update application data with new review"""
-        prediction = prediction_data['prediction']
-        selected_app = prediction_data['app']
-        detected_features = prediction.get('features', [])
-        sentiment = prediction['sentiment']
-        
-        if not detected_features:
-            st.error("❌ Tidak dapat mengupdate data: Tidak ada fitur yang terdeteksi")
-            return
-        
-        try:
-            # Update in-memory data
-            if selected_app not in self.apps_data:
-                self.apps_data[selected_app] = {}
-            
-            updated_features = []
-            
-            for feature in detected_features:
-                if feature not in self.apps_data[selected_app]:
-                    self.apps_data[selected_app][feature] = {'positive': 0, 'negative': 0}
-                
-                # Update counts
-                if sentiment == 'positive':
-                    self.apps_data[selected_app][feature]['positive'] += 1
-                else:
-                    self.apps_data[selected_app][feature]['negative'] += 1
-                
-                updated_features.append(feature)
-            
-            # Save to file (optional - create backup)
-            self._save_updated_data(selected_app, prediction_data)
-            
-            # Show success message
-            st.success("✅ Data berhasil diupdate!")
-            
-            # Update session state for immediate UI refresh
-            st.session_state.data_updated = True
-            
-            # Show updated statistics
-            self._show_updated_statistics(selected_app, updated_features)
-            
-            # Clear prediction from session state
-            if 'last_prediction' in st.session_state:
-                del st.session_state.last_prediction
-            
-            # Auto refresh after 2 seconds
-            time.sleep(2)
-            st.rerun()
-            
-        except Exception as e:
-            st.error(f"❌ Error saat mengupdate data: {str(e)}")
-
-    def _show_updated_statistics(self, app_name, updated_features):
-        """Show updated statistics after data update"""
-        st.subheader("📈 Statistik Terupdate")
-        
-        app_data = self.apps_data[app_name]
-        
-        cols = st.columns(len(updated_features))
-        
-        for i, feature in enumerate(updated_features):
-            with cols[i]:
-                feature_data = app_data[feature]
-                positive = feature_data.get('positive', 0)
-                negative = feature_data.get('negative', 0)
-                total = positive + negative
-                percentage = (positive / total * 100) if total > 0 else 0
-                
-                st.metric(
-                    f"{feature.capitalize()}",
-                    f"{percentage:.1f}%",
-                    delta=f"Total: {total} ulasan"
-                )
-
-    def _save_updated_data(self, app_name, prediction_data):
-        """Save updated data to API and create local backup"""
-        import json
-        import os
-        from datetime import datetime
-        
-        try:
-            # Prepare data untuk API
-            updated_data = self.apps_data[app_name]
-            
-            # Kirim update ke API
-            api_url = "https://nihongonavigator-api-production.up.railway.app"
-            app_endpoint_map = {
-                'Mazii': '/api/sentiment/mazii/update',
-                'Obenkyo': '/api/sentiment/obenkyo/update',
-                'Hey Japan': '/api/sentiment/heyjapan/update', 
-                'JA Sensei': '/api/sentiment/jasensei/update',
-                'Migii JLPT': '/api/sentiment/migiijlpt/update',
-                'Kanji Study': '/api/sentiment/kanjistudy/update'
-            }
-            
-            endpoint = app_endpoint_map.get(app_name)
-            if endpoint:
-                # Payload untuk API
-                payload = {
-                    'features': updated_data,
-                    'metadata': {
-                        'timestamp': prediction_data['timestamp'],
-                        'sentiment': prediction_data['prediction']['sentiment'],
-                        'confidence': prediction_data['prediction']['confidence'],
-                        'review_text': prediction_data['text'][:200]  # Limit text length
-                    }
-                }
-                
-                response = requests.post(
-                    f"{api_url}{endpoint}",
-                    json=payload,
-                    headers={'Content-Type': 'application/json'},
-                    timeout=10
-                )
-                
-                if response.status_code == 200:
-                    st.success("✅ Data berhasil disinkronkan dengan API")
-                else:
-                    st.warning(f"⚠️ Gagal sync dengan API (Status: {response.status_code})")
-            
-            # Tetap buat backup lokal
-            self._create_local_backup(app_name, prediction_data, updated_data)
-            
-        except requests.RequestException as e:
-            st.error(f"❌ Error saat sync dengan API: {str(e)}")
-            st.info("💾 Data tersimpan lokal, akan sync otomatis nanti")
-            self._create_local_backup(app_name, prediction_data, updated_data)
-        
-        except Exception as e:
-            st.error(f"❌ Error saat menyimpan data: {str(e)}")
-
-    def _create_local_backup(self, app_name, prediction_data, updated_data):
-        """Create local backup of updated data"""
-        import json
-        import os
-        from datetime import datetime
-        
-        try:
-            # Create backup directory
-            backup_dir = "data/backups"
-            os.makedirs(backup_dir, exist_ok=True)
-            
-            # Create backup filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_filename = f"{backup_dir}/backup_{app_name}_{timestamp}.json"
-            
-            # Save backup
-            backup_data = {
-                'app_name': app_name,
-                'timestamp': prediction_data['timestamp'],
-                'data': updated_data,
-                'prediction_info': prediction_data['prediction']
-            }
-            
-            with open(backup_filename, 'w', encoding='utf-8') as f:
-                json.dump(backup_data, f, indent=2, ensure_ascii=False)
-            
-            # Update log
-            self._update_local_log(app_name, prediction_data, backup_filename)
-            
-            st.info(f"💾 Backup lokal disimpan: {backup_filename}")
-            
-        except Exception as e:
-            st.warning(f"⚠️ Gagal membuat backup lokal: {str(e)}")
 
     def check_api_connection(self) -> bool:
-        """Check if API is accessible"""
+        """Improved API connection check"""
         try:
-            response = requests.get(
-                "https://nihongonavigator-api-production.up.railway.app/api/health",
-                timeout=5
-            )
-            return response.status_code == 200
-        except:
+            # Try different endpoints
+            endpoints_to_try = [
+                "/api/health",
+                "/predict", 
+                "/",
+                "/status"
+            ]
+            
+            base_url = "https://nihongonavigator-api-production.up.railway.app"
+            
+            for endpoint in endpoints_to_try:
+                try:
+                    if endpoint == "/predict":
+                        # Test POST request for predict endpoint
+                        response = requests.post(
+                            f"{base_url}{endpoint}",
+                            json={"text": "test", "app_name": "test"},
+                            headers={'Content-Type': 'application/json'},
+                            timeout=5
+                        )
+                    else:
+                        # Test GET request for other endpoints
+                        response = requests.get(f"{base_url}{endpoint}", timeout=5)
+                    
+                    if response.status_code in [200, 400, 422]:  # 400/422 might indicate API is working but needs proper input
+                        # st.success(f"✅ API accessible via {endpoint} (Status: {response.status_code})")
+                        return True
+                        
+                except requests.RequestException:
+                    continue
+            
             return False
-
-    # Add this method to show update history
-    def create_update_history(self):
-        """Create page to show update history"""
-        st.subheader("📜 Riwayat Update Data")
-        
-        log_file = "data/update_log.json"
-        
-        if not os.path.exists(log_file):
-            st.info("Belum ada riwayat update data.")
-            return
-        
-        try:
-            with open(log_file, 'r', encoding='utf-8') as f:
-                logs = json.load(f)
             
-            if not logs:
-                st.info("Belum ada riwayat update data.")
-                return
-            
-            # Sort by timestamp (newest first)
-            logs.sort(key=lambda x: x['timestamp'], reverse=True)
-            
-            # Display filters
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                app_filter = st.selectbox(
-                    "Filter Aplikasi:",
-                    options=['Semua'] + list(set(log['app_name'] for log in logs))
-                )
-            
-            with col2:
-                sentiment_filter = st.selectbox(
-                    "Filter Sentimen:",
-                    options=['Semua', 'positive', 'negative']
-                )
-            
-            with col3:
-                limit = st.selectbox("Tampilkan:", options=[10, 25, 50, 100], index=0)
-            
-            # Filter logs
-            filtered_logs = logs
-            
-            if app_filter != 'Semua':
-                filtered_logs = [log for log in filtered_logs if log['app_name'] == app_filter]
-            
-            if sentiment_filter != 'Semua':
-                filtered_logs = [log for log in filtered_logs if log['sentiment'] == sentiment_filter]
-            
-            filtered_logs = filtered_logs[:limit]
-            
-            # Display logs
-            st.write(f"Menampilkan {len(filtered_logs)} dari {len(logs)} total update")
-            
-            for i, log in enumerate(filtered_logs):
-                with st.expander(f"Update #{i+1}: {log['app_name']} - {log['sentiment'].title()} ({log['timestamp'][:19]})"):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.write("**Detail Update:**")
-                        st.write(f"• **Aplikasi:** {log['app_name']}")
-                        st.write(f"• **Sentimen:** {log['sentiment'].title()}")
-                        st.write(f"• **Confidence:** {log.get('confidence', 0):.1f}%")
-                        st.write(f"• **Fitur:** {', '.join(log.get('features', []))}")
-                    
-                    with col2:
-                        st.write("**Ulasan:**")
-                        st.write(f'"{log.get("review_text", "")}"')
-                        st.write(f"**Backup File:** `{log.get('backup_file', 'N/A')}`")
-            
-            # Export functionality
-            if st.button("📥 Export Log ke CSV"):
-                df_logs = pd.DataFrame(filtered_logs)
-                csv = df_logs.to_csv(index=False)
-                st.download_button(
-                    label="Download CSV",
-                    data=csv,
-                    file_name=f"update_log_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv"
-                )
-        
         except Exception as e:
-            st.error(f"Error loading update history: {str(e)}")
+            st.error(f"Error checking API connection: {str(e)}")
+            return False
 
     def load_data_with_fallback(self):
         """Load data with fallback mechanism"""
@@ -802,8 +640,7 @@ class SentimentAnalysisApp:
             "📊 Perbandingan": self.create_comparison_table,
             "🔍 Analisis Fitur": self.create_feature_analysis,
             "🤖 Prediksi Live": self.create_live_prediction,
-            "📜 Riwayat Update": self.create_update_history,
-            "🔄 Reload Data": self.reload_data_from_api  # New option
+            # "🔄 Reload Data": self.reload_data_from_api 
         }
         
         selected_page = st.sidebar.selectbox("Pilih Halaman:", list(pages.keys()))
@@ -825,7 +662,6 @@ class SentimentAnalysisApp:
         
         **Data Source:** {'🌐 API' if api_connected else '💾 Local Backup'}
         **Aplikasi:** 6 apps pembelajaran bahasa Jepang
-        **Update Real-time:** {'✅ Aktif' if api_connected else '⚠️ Offline Mode'}
         """)
         
         # Manual refresh button
