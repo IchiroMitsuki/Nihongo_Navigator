@@ -1,12 +1,20 @@
-Struktur Proyek Analisis Sentimen Aplikasi Bahasa Jepang
+# 🇯🇵 Japanese App Sentiment Analysis
+
+Sistem Analisis Sentimen untuk Aplikasi Pembelajaran Bahasa Jepang. Proyek ini menggunakan Machine Learning dan visualisasi data untuk menganalisis sentimen pengguna dari berbagai aplikasi belajar bahasa Jepang seperti Mazii, Obenkyo, HeyJapan, JA Sensei, Migii JLPT, dan Kanji Study.
+
+---
+
+## 📁 Struktur Proyek
+
+```
 japanese_app_sentiment_analysis/
 │
-├── app.py                          # Main Streamlit application
-├── requirements.txt                # Dependencies
-├── README.md                       # Project documentation
+├── app.py                        # Aplikasi utama Streamlit
+├── requirements.txt              # Daftar dependensi
+├── README.md                     # Dokumentasi proyek
 │
 ├── data/
-│   ├── raw/
+│   ├── raw/                      # Data mentah hasil scraping/analisis awal
 │   │   ├── hasil_sentimen_mazii_agregat.json
 │   │   ├── hasil_sentimen_obenkyo_agregat.json
 │   │   ├── hasil_sentimen_heyjapan_agregat.json
@@ -14,82 +22,107 @@ japanese_app_sentiment_analysis/
 │   │   ├── hasil_sentimen_migiijlpt_agregat.json
 │   │   └── hasil_sentimen_kanjistudy_agregat.json
 │   └── processed/
-│       └── aggregated_data.json
+│       └── aggregated_data.json  # Data yang telah diproses
 │
 ├── models/
-│   ├── sentiment_model.pkl         # Trained ML model
-│   ├── vectorizer.pkl              # Text vectorizer
-│   └── model_training.py           # Model training script
+│   ├── sentiment_model.pkl       # Model ML yang telah dilatih
+│   ├── vectorizer.pkl            # Vectorizer teks
+│   └── model_training.py         # Script pelatihan model
 │
 ├── src/
 │   ├── __init__.py
-│   ├── data_processor.py           # Data processing functions
-│   ├── visualization.py            # Chart and graph functions
-│   ├── ml_predictor.py             # ML prediction functions
-│   └── utils.py                    # Utility functions
+│   ├── data_processor.py         # Fungsi pemrosesan data
+│   ├── visualization.py          # Fungsi visualisasi dan grafik
+│   ├── ml_predictor.py           # Fungsi prediksi menggunakan ML
+│   └── utils.py                  # Fungsi utilitas umum
 │
 ├── assets/
-│   ├── style.css                   # Custom CSS styling
+│   ├── style.css                 # Styling khusus untuk Streamlit
 │   └── images/
-│       └── logo.png
+│       └── logo.png              # Logo aplikasi
 │
 ├── notebooks/
-│   ├── data_exploration.ipynb      # Data analysis notebook
-│   └── model_development.ipynb     # Model training notebook
+│   ├── data_exploration.ipynb    # Notebook eksplorasi data
+│   └── model_development.ipynb   # Notebook pelatihan model
 │
 └── tests/
     ├── __init__.py
     ├── test_data_processor.py
     └── test_ml_predictor.py
-Setup Instructions
+```
 
-Clone/Create Project Directory:
+---
 
-bashmkdir japanese_app_sentiment_analysis
+## ⚙️ Cara Menjalankan
+
+### 1. Clone / Buat Direktori Proyek
+
+```bash
+git clone https://github.com/topiqnurrm/Nihongo_Navigator.git
 cd japanese_app_sentiment_analysis
+```
 
-Create Virtual Environment:
+### 2. Buat Virtual Environment
 
-bashpython -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+```bash
+python -m venv venv
+# Untuk Windows:
+venv\Scripts\activate
+# Untuk Linux/Mac:
+source venv/bin/activate
+```
 
-Install Dependencies:
+### 3. Install Dependensi
 
-bashpip install -r requirements.txt
+```bash
+pip install -r requirements.txt
+```
 
-Run Application:
+### 4. Jalankan Aplikasi
 
-bashstreamlit run app.py
-Key Features
-1. Dashboard Overview
+```bash
+streamlit run app.py
+```
 
-Comparison table of all applications by features
-Overall sentiment percentages
-Interactive filtering and sorting
+---
 
-2. Feature Analysis
+## 🔑 Fitur Utama
 
-Detailed breakdown by feature (kanji, kotoba, bunpou)
-Ranking system based on user-selected features
-Visual charts and graphs
+### 1. **Dashboard Overview**
+- Tabel perbandingan fitur antar aplikasi
+- Persentase sentimen keseluruhan
+- Filter dan sortir interaktif
 
-3. Live Prediction
+### 2. **Feature Analysis**
+- Analisis mendalam per fitur: Kanji, Kotoba, Bunpou
+- Sistem ranking berdasarkan fitur pilihan pengguna
+- Grafik dan visualisasi menarik
 
-Text input for custom review analysis
-Real-time sentiment prediction
-Feature extraction and classification
+### 3. **Live Prediction**
+- Input teks untuk prediksi sentimen real-time
+- Ekstraksi fitur dan klasifikasi secara langsung
 
-4. Data Export
+### 4. **Data Export**
+- Ekspor hasil filter ke file CSV
+- Laporan otomatis
+- Unduh grafik sebagai gambar
 
-Export filtered results to CSV
-Generate reports
-Download charts as images
+---
 
-Technology Stack
+## 🧰 Teknologi yang Digunakan
 
-Frontend: Streamlit
-Backend: Python
-ML Libraries: Scikit-learn, Pandas, NumPy
-Visualization: Plotly, Matplotlib
-Data Storage: JSON, CSV files
-Model Persistence: Pickle/Joblib
+| Komponen     | Teknologi                              |
+|--------------|-----------------------------------------|
+| Frontend     | Streamlit                              |
+| Backend      | Python                                 |
+| ML Libraries | Scikit-learn, Pandas, NumPy            |
+| Visualisasi  | Plotly, Matplotlib                     |
+| Penyimpanan  | JSON, CSV                              |
+| Model        | Pickle / Joblib                        |
+
+---
+
+## 📌 Catatan Tambahan
+
+- Dataset yang digunakan merupakan hasil agregasi review pengguna dari Play Store untuk masing-masing aplikasi.
+- Model Machine Learning berbasis klasifikasi sentimen menggunakan TF-IDF dan algoritma Naive Bayes.
