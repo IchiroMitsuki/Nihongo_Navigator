@@ -216,86 +216,491 @@ class SentimentAnalysisApp:
         st.dataframe(df_ranking, use_container_width=True)
     
     def create_live_prediction(self):
-        """Create live sentiment prediction interface with app selection and data update"""
+        """Create live sentiment prediction interface with app selection, feature selection, and data update"""
         st.subheader("🤖 Prediksi Sentimen Real-time")
         
         st.write("Masukkan ulasan aplikasi untuk melihat prediksi sentimen dan update data aplikasi:")
         
-        # App selection
-        col1, col2 = st.columns([2, 1])
+        # App and Feature selection
+        col1, col2 = st.columns([2, 2])
         
         with col1:
             selected_app = st.selectbox(
-                "Pilih Aplikasi Target:",
+                "🎯 Pilih Aplikasi Target:",
                 options=list(self.apps_data.keys()),
                 help="Pilih aplikasi yang akan menerima komentar ini"
             )
         
         with col2:
-            st.info(f"**{selected_app}** dipilih")
-            if selected_app in self.apps_data:
+            feature_options = {
+                'auto': '🤖 Deteksi Otomatis',
+                'kanji': '🔤 Kanji - Pembelajaran karakter Jepang',
+                'kotoba': '💬 Kotoba - Kosakata bahasa Jepang', 
+                'bunpou': '📚 Bunpou - Tata bahasa Jepang'
+            }
+            
+            selected_feature_mode = st.selectbox(
+                "🎯 Pilih Fitur Target:",
+                options=list(feature_options.keys()),
+                format_func=lambda x: feature_options[x],
+                help="Pilih fitur spesifik atau biarkan sistem mendeteksi otomatis"
+            )
+        
+        # Show app info
+        if selected_app in self.apps_data:
+            with st.container():
+                st.markdown("### 📱 Info Aplikasi Terpilih")
                 app_data = self.apps_data[selected_app]
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
                 total_reviews = sum(
                     feature_data.get('positive', 0) + feature_data.get('negative', 0)
                     for feature_data in app_data.values()
                 )
-                st.metric("Total Ulasan Saat Ini", total_reviews)
+                
+                total_positive = sum(
+                    feature_data.get('positive', 0) for feature_data in app_data.values()
+                )
+                
+                with col1:
+                    st.metric("📊 Total Ulasan", total_reviews)
+                
+                with col2:
+                    st.metric("✅ Ulasan Positif", total_positive)
+                
+                with col3:
+                    positive_rate = (total_positive / total_reviews * 100) if total_reviews > 0 else 0
+                    st.metric("📈 Tingkat Positif", f"{positive_rate:.1f}%")
+                
+                with col4:
+                    feature_count = len([f for f in app_data.keys() if f in ['kanji', 'kotoba', 'bunpou']])
+                    st.metric("🎯 Fitur Tersedia", f"{feature_count}/3")
         
-        # Text input with character counter
+        # Text input with enhanced UI
+        st.markdown("### ✍️ Tulis Ulasan Anda")
+        
+        # Provide examples based on selected feature
+        if selected_feature_mode != 'auto':
+            feature_examples = {
+                'kanji': "Contoh: 'Aplikasi ini sangat membantu untuk belajar kanji, karakternya mudah diingat dan ada sistem pengulangan yang bagus.'",
+                'kotoba': "Contoh: 'Kosakata yang disediakan sangat lengkap dan audio pronounciation-nya jelas, membantu saya memperbanyak vocabulary.'",
+                'bunpou': "Contoh: 'Penjelasan grammar sangat detail dan mudah dipahami, struktur kalimat dijelaskan dengan baik.'"
+            }
+            st.info(f"💡 {feature_examples.get(selected_feature_mode, '')}")
+        
         user_input = st.text_area(
-            "Tulis ulasan Anda:",
-            placeholder="Contoh: Aplikasi ini sangat membantu untuk belajar kanji, interfacenya mudah digunakan...",
-            help="Minimum 10 karakter untuk prediksi yang akurat",
-            max_chars=500
+            "📝 Ulasan:",
+            placeholder="Tulis ulasan Anda di sini... (minimal 10 karakter)",
+            help="Tulis ulasan yang jujur dan detail tentang pengalaman Anda menggunakan aplikasi",
+            max_chars=500,
+            height=120
         )
-        
-        # Character counter
+        # Enhanced character counter with visual feedback
         if user_input:
             char_count = len(user_input)
-            if char_count < 10:
-                st.warning(f"⚠️ Masukkan minimal 10 karakter (saat ini: {char_count})")
-            else:
-                st.success(f"✅ Panjang teks: {char_count} karakter")
+            col1, col2, col3 = st.columns([2, 1, 1])
+            with col1:
+                if char_count < 10:
+                    st.error(f"⚠️ Masukkan minimal 10 karakter lagi ({10 - char_count} karakter tersisa)")
+                elif char_count < 50:
+                    st.warning(f"✏️ Ulasan cukup pendek ({char_count} karakter) - tambahkan detail untuk hasil yang lebih akurat")
+                else:
+                    st.success(f"✅ Panjang ulasan: {char_count} karakter - bagus!")
+            
+            with col2:
+                progress = min(char_count / 100, 1.0)
+                st.progress(progress, text=f"{char_count}/500")
+            
+            with col3:
+                words = len(user_input.split())
+                st.metric("Kata", words)
         
-        # Prediction buttons
-        col1, col2, col3 = st.columns([2, 1, 1])
+        # Action buttons with improved layout and descriptions
+        st.markdown("### 🎮 Aksi")
+        
+        col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
         
         with col1:
-            predict_button = st.button("🔍 Analisis Sentimen", disabled=len(user_input) < 10)
+            predict_enabled = len(user_input) >= 10
+            predict_button = st.button(
+                "🔍 Analisis Sentimen",
+                disabled=not predict_enabled,
+                help="Klik untuk menganalisis sentimen ulasan Anda" if predict_enabled else "Masukkan minimal 10 karakter untuk mengaktifkan analisis",
+                type="primary" if predict_enabled else "secondary"
+            )
         
         with col2:
-            if 'last_prediction' in st.session_state and st.session_state.last_prediction:
-                update_button = st.button("💾 Update Data", type="primary", key="update_btn_sidebar")
+            has_prediction = 'last_prediction' in st.session_state and st.session_state.last_prediction
+            update_enabled = has_prediction and predict_enabled
+            
+            if update_enabled:
+                update_button = st.button(
+                    "💾 Simpan ke Database", 
+                    type="secondary",
+                    help="Simpan hasil analisis ke database aplikasi"
+                )
             else:
-                st.button("💾 Update Data", disabled=True, help="Lakukan prediksi terlebih dahulu")
+                st.button(
+                    "💾 Simpan ke Database", 
+                    disabled=True, 
+                    help="Lakukan analisis sentimen terlebih dahulu"
+                )
         
         with col3:
-            if st.button("🔄 Reset"):
+            if st.button("🔄 Reset", help="Bersihkan semua input dan hasil"):
                 if 'last_prediction' in st.session_state:
                     del st.session_state.last_prediction
                 st.rerun()
         
-        # Perform prediction
+        with col4:
+            if st.button("❓ Help", help="Panduan penggunaan"):
+                st.info("""
+                **Cara Penggunaan:**
+                1. Pilih aplikasi target
+                2. Pilih fitur (atau biarkan auto-detect)
+                3. Tulis ulasan minimal 10 karakter
+                4. Klik 'Analisis Sentimen'
+                5. Review hasil, lalu klik 'Simpan ke Database'
+                """)
+        
+        # Perform prediction with enhanced feature handling
         if predict_button and user_input:
-            with st.spinner("Menganalisis sentimen..."):
+            with st.spinner("🔄 Menganalisis sentimen... Mohon tunggu"):
+                # Create progress bar for better UX
+                progress_bar = st.progress(0)
+                
+                # Simulate analysis steps
+                progress_bar.progress(25, "Memproses teks...")
+                time.sleep(0.5)
+                
+                progress_bar.progress(50, "Menganalisis sentimen...")
                 prediction = self.ml_predictor.predict_sentiment(user_input)
+                
+                progress_bar.progress(75, "Mendeteksi fitur...")
+                
+                # Override feature detection if specific feature is selected
+                if selected_feature_mode != 'auto':
+                    prediction['features'] = [selected_feature_mode]
+                    prediction['feature_override'] = True
+                
+                progress_bar.progress(100, "Selesai!")
+                time.sleep(0.5)
+                progress_bar.empty()
                 
                 # Store prediction in session state
                 st.session_state.last_prediction = {
                     'text': user_input,
                     'app': selected_app,
                     'prediction': prediction,
+                    'feature_mode': selected_feature_mode,
                     'timestamp': pd.Timestamp.now().isoformat()
                 }
+                
+                # Show success message
+                st.success("✅ Analisis sentimen berhasil! Lihat hasil di bawah.")
         
         # Display prediction results
         if 'last_prediction' in st.session_state and st.session_state.last_prediction:
-            self._display_prediction_results(st.session_state.last_prediction)
+            self._display_enhanced_prediction_results(st.session_state.last_prediction)
         
-        # Update data functionality - FIX: Handle update button properly
+        # Update data functionality with confirmation
         if 'last_prediction' in st.session_state and st.session_state.last_prediction:
-            if update_button:  # Check if update button was clicked
-                self._update_app_data(st.session_state.last_prediction)
+            if st.button("💾 Konfirmasi Simpan Data", key="update_data_main", type="primary"):
+                # Show confirmation dialog
+                if st.button("✅ Ya, Simpan Data!", key="confirm_update"):
+                    self._update_app_data(st.session_state.last_prediction)
+
+    def _display_enhanced_prediction_results(self, prediction_data):
+        """Display enhanced prediction results with better formatting"""
+        st.markdown("---")
+        st.markdown("## 📊 Hasil Analisis Sentimen")
+        
+        prediction = prediction_data['prediction']
+        selected_app = prediction_data['app']
+        feature_mode = prediction_data.get('feature_mode', 'auto')
+        
+        # Main results with enhanced styling
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            sentiment = prediction['sentiment']
+            if sentiment == 'positive':
+                sentiment_display = "🟢 POSITIF"
+                sentiment_color = "success"
+            else:
+                sentiment_display = "🔴 NEGATIF"
+                sentiment_color = "error"
+            
+            st.metric(
+                "🎯 Sentimen", 
+                sentiment_display,
+                delta=f"Confidence: {prediction['confidence']:.1f}%"
+            )
+        
+        with col2:
+            st.metric(
+                "📱 Aplikasi", 
+                selected_app,
+                delta="Target update"
+            )
+        
+        with col3:
+            detected_features = prediction.get('features', [])
+            feature_count = len(detected_features)
+            
+            if feature_mode != 'auto':
+                feature_info = f"Manual: {feature_mode.capitalize()}"
+            else:
+                feature_info = f"Auto: {feature_count} fitur"
+            
+            st.metric(
+                "🎯 Mode Fitur", 
+                feature_info,
+                delta=f"{', '.join(detected_features) if detected_features else 'Tidak ada'}"
+            )
+        
+        with col4:
+            text_quality = "Bagus" if len(prediction_data['text']) > 50 else "Cukup"
+            st.metric(
+                "📝 Kualitas Teks",
+                text_quality,
+                delta=f"{len(prediction_data['text'])} karakter"
+            )
+        
+        # Detailed analysis in tabs
+        tab1, tab2, tab3 = st.tabs(["📋 Detail Analisis", "🎯 Fitur Terdeteksi", "💡 Saran & Tips"])
+        
+        with tab1:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**🔍 Informasi Teknis:**")
+                st.write(f"• **Metode Deteksi:** {feature_mode.title() if feature_mode != 'auto' else 'Otomatis'}")
+                st.write(f"• **Confidence Score:** {prediction['confidence']:.2f}%")
+                st.write(f"• **Model:** {prediction.get('method', 'ML Classifier')}")
+                st.write(f"• **Waktu Analisis:** {prediction_data['timestamp'][:19]}")
+                
+                # Confidence level interpretation
+                confidence = prediction['confidence']
+                if confidence >= 80:
+                    conf_level = "🟢 Sangat Tinggi"
+                elif confidence >= 60:
+                    conf_level = "🟡 Tinggi"
+                elif confidence >= 40:
+                    conf_level = "🟠 Sedang"
+                else:
+                    conf_level = "🔴 Rendah"
+                
+                st.write(f"• **Tingkat Kepercayaan:** {conf_level}")
+            
+            with col2:
+                st.markdown("**📝 Analisis Teks:**")
+                text_length = len(prediction_data['text'])
+                word_count = len(prediction_data['text'].split())
+                
+                st.write(f"• **Panjang Teks:** {text_length} karakter")
+                st.write(f"• **Jumlah Kata:** {word_count} kata")
+                st.write(f"• **Rata-rata Kata:** {text_length/word_count:.1f} karakter/kata" if word_count > 0 else "• **Rata-rata Kata:** N/A")
+                
+                # Text preview
+                preview_text = prediction_data['text'][:100] + "..." if len(prediction_data['text']) > 100 else prediction_data['text']
+                st.write(f"• **Preview:** *\"{preview_text}\"*")
+        
+        with tab2:
+            detected_features = prediction.get('features', [])
+            
+            if detected_features:
+                st.success(f"✅ Berhasil mendeteksi {len(detected_features)} fitur:")
+                
+                for feature in detected_features:
+                    feature_info = {
+                        'kanji': {
+                            'icon': '🔤',
+                            'name': 'Kanji',
+                            'desc': 'Pembelajaran karakter Jepang',
+                            'keywords': ['kanji', 'karakter', 'huruf jepang', 'ideogram']
+                        },
+                        'kotoba': {
+                            'icon': '💬',
+                            'name': 'Kotoba',
+                            'desc': 'Kosakata bahasa Jepang',
+                            'keywords': ['kosakata', 'vocabulary', 'kata', 'kotoba']
+                        },
+                        'bunpou': {
+                            'icon': '📚',
+                            'name': 'Bunpou',
+                            'desc': 'Tata bahasa Jepang',
+                            'keywords': ['grammar', 'tata bahasa', 'bunpou', 'struktur']
+                        }
+                    }
+                    
+                    info = feature_info.get(feature, {'icon': '❓', 'name': feature.title(), 'desc': 'Fitur tidak dikenal'})
+                    
+                    with st.container():
+                        st.markdown(f"""
+                        **{info['icon']} {info['name']}**
+                        - {info['desc']}
+                        - Keywords: {', '.join(info.get('keywords', []))}
+                        """)
+            else:
+                st.warning("⚠️ Tidak ada fitur spesifik yang terdeteksi")
+                st.info("""
+                **💡 Tips untuk deteksi fitur yang lebih baik:**
+                - Sebutkan kata kunci seperti: 'kanji', 'kosakata', 'grammar'
+                - Atau gunakan mode manual di pilihan fitur
+                - Berikan ulasan yang lebih detail dan spesifik
+                """)
+        
+        with tab3:
+            st.markdown("### 💡 Saran Berdasarkan Analisis")
+            
+            confidence = prediction['confidence']
+            sentiment = prediction['sentiment']
+            
+            if confidence >= 80:
+                st.success("🎯 **Analisis Sangat Akurat** - Hasil dapat dipercaya dan siap untuk disimpan")
+            elif confidence >= 60:
+                st.info("👍 **Analisis Cukup Baik** - Hasil dapat diterima dengan catatan kecil")
+            else:
+                st.warning("⚠️ **Analisis Kurang Akurat** - Pertimbangkan untuk menulis ulasan yang lebih detail")
+            
+            # Personalized suggestions
+            if sentiment == 'positive':
+                st.success("""
+                ✅ **Ulasan Positif Terdeteksi**
+                - Ulasan ini akan meningkatkan rating aplikasi
+                - Feedback positif membantu developer
+                - Terima kasih atas kontribusi Anda!
+                """)
+            else:
+                st.info("""
+                📝 **Ulasan Negatif Terdeteksi**
+                - Feedback konstruktif sangat berharga
+                - Membantu identifikasi area perbaikan
+                - Pastikan kritik bersifat membangun
+                """)
+        
+        # Enhanced preview section
+        st.markdown("---")
+        st.subheader("👀 Preview Update Database")
+        self._show_enhanced_data_update_preview(prediction_data)
+
+
+    def _show_enhanced_data_update_preview(self, prediction_data):
+        """Show enhanced preview of how data will be updated"""
+        prediction = prediction_data['prediction']
+        selected_app = prediction_data['app']
+        detected_features = prediction.get('features', [])
+        sentiment = prediction['sentiment']
+        feature_mode = prediction_data.get('feature_mode', 'auto')
+        
+        if not detected_features:
+            st.error("❌ **Tidak dapat mengupdate database:** Tidak ada fitur yang terdeteksi")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.info("""
+                **🔧 Solusi:**
+                1. Gunakan mode 'Manual' pada pilihan fitur
+                2. Sebutkan kata kunci fitur dalam ulasan
+                3. Tulis ulasan yang lebih spesifik
+                """)
+            
+            with col2:
+                st.warning("""
+                **⚠️ Catatan:**
+                - Data tidak akan tersimpan tanpa fitur
+                - Sistem memerlukan klasifikasi fitur
+                - Gunakan panduan di tab 'Saran & Tips'
+                """)
+            return
+        
+        # Current data analysis
+        current_data = self.apps_data.get(selected_app, {})
+        
+        # Enhanced preview table
+        st.markdown("### 📊 Perbandingan Data: Sebelum vs Sesudah")
+        
+        preview_data = []
+        
+        for feature in detected_features:
+            current_pos = current_data.get(feature, {}).get('positive', 0)
+            current_neg = current_data.get(feature, {}).get('negative', 0)
+            current_total = current_pos + current_neg
+            current_percentage = (current_pos / current_total * 100) if current_total > 0 else 0
+            
+            # Calculate new values
+            new_pos = current_pos + (1 if sentiment == 'positive' else 0)
+            new_neg = current_neg + (1 if sentiment == 'negative' else 0)
+            new_total = new_pos + new_neg
+            new_percentage = (new_pos / new_total * 100) if new_total > 0 else 0
+            
+            # Calculate change
+            percentage_change = new_percentage - current_percentage
+            change_indicator = "📈" if percentage_change > 0 else "📉" if percentage_change < 0 else "➡️"
+            
+            preview_data.append({
+                'Fitur': f"{feature.capitalize()}",
+                'Positif (Lama)': current_pos,
+                'Negatif (Lama)': current_neg,
+                'Total (Lama)': current_total,
+                '% Positif (Lama)': f"{current_percentage:.1f}%",
+                'Positif (Baru)': new_pos,
+                'Negatif (Baru)': new_neg,
+                'Total (Baru)': new_total,
+                '% Positif (Baru)': f"{new_percentage:.1f}%",
+                'Perubahan': f"{change_indicator} {percentage_change:+.1f}%"
+            })
+        
+        df_preview = pd.DataFrame(preview_data)
+        st.dataframe(df_preview, use_container_width=True, hide_index=True)
+        
+        # Impact analysis
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**📈 Ringkasan Dampak:**")
+            total_reviews_added = len(detected_features)
+            st.write(f"• **Total ulasan baru:** +{total_reviews_added}")
+            st.write(f"• **Sentimen:** {sentiment.title()}")
+            st.write(f"• **Fitur terpengaruh:** {len(detected_features)}")
+            st.write(f"• **Mode deteksi:** {feature_mode.title()}")
+        
+        with col2:
+            st.markdown("**🎯 Detail Perubahan:**")
+            for feature in detected_features:
+                current_total = current_data.get(feature, {}).get('positive', 0) + current_data.get(feature, {}).get('negative', 0)
+                st.write(f"• **{feature.capitalize()}:** {current_total} → {current_total + 1} ulasan")
+            
+            # Confidence indicator
+            confidence = prediction['confidence']
+            conf_emoji = "🟢" if confidence >= 80 else "🟡" if confidence >= 60 else "🔴"
+            st.write(f"• **Kepercayaan:** {conf_emoji} {confidence:.1f}%")
+        
+        # Final confirmation section
+        st.markdown("---")
+        st.markdown("### ✅ Konfirmasi Penyimpanan")
+        
+        changes_summary = f"""
+        **🔍 Ringkasan yang akan disimpan:**
+        - **Aplikasi:** {selected_app}
+        - **Sentimen:** {sentiment.title()} ({prediction['confidence']:.1f}% confidence)
+        - **Fitur:** {', '.join([f.capitalize() for f in detected_features])}
+        - **Total fitur:** {len(detected_features)} fitur terpengaruh
+        - **Metode:** {feature_mode.title()} detection
+        """
+        
+        if sentiment == 'positive':
+            st.success(changes_summary)
+        else:
+            st.info(changes_summary)
+        
+        # Warning for low confidence
+        if prediction['confidence'] < 60:
+            st.warning("⚠️ **Perhatian:** Confidence score rendah. Pastikan ulasan sudah sesuai sebelum menyimpan.")
+
+
 
     def _update_app_data(self, prediction_data):
         """Update application data with new review - FIXED VERSION"""
