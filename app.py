@@ -54,16 +54,63 @@ class SentimentAnalysisApp:
         self.visualizer = Visualizer()
         self.ml_predictor = MLPredictor()
         
-        # Load data with fallback mechanism
-        try:
-            self.apps_data = self.load_data_with_fallback()
-        except Exception as e:
-            st.error(f"❌ Critical error loading data: {str(e)}")
-            self.apps_data = {}
+        # Load data from session state first, then fallback to API/default
+        if not self.load_data_from_session():
+            try:
+                self.apps_data = self.load_data_with_fallback()
+            except Exception as e:
+                st.error(f"❌ Critical error loading data: {str(e)}")
+                self.apps_data = {}
+        
+        # Simpan ke session state
+        st.session_state.apps_data = self.apps_data
         
         # Cache API connection status
         if 'api_connected' not in st.session_state:
             st.session_state.api_connected = self.check_api_connection()
+
+    def export_updated_data(self):
+        """Export updated data to JSON"""
+        try:
+            export_data = {
+                'timestamp': pd.Timestamp.now().isoformat(),
+                'apps_data': self.apps_data,
+                'total_apps': len(self.apps_data),
+                'total_reviews': sum(
+                    sum(feature_data.get('positive', 0) + feature_data.get('negative', 0) 
+                        for feature_data in app_data.values())
+                    for app_data in self.apps_data.values()
+                )
+            }
+            
+            json_data = json.dumps(export_data, indent=2, ensure_ascii=False)
+            
+            st.download_button(
+                label="📥 Download Data (JSON)",
+                data=json_data,
+                file_name=f"sentiment_data_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json"
+            )
+            
+            return True
+        except Exception as e:
+            st.error(f"Error exporting data: {str(e)}")
+            return False
+
+    def reset_data(self):
+        """Reset data to original state"""
+        if st.button("🔄 Reset Data", help="Reset semua data ke kondisi awal"):
+            if st.session_state.get('confirm_reset', False):
+                # Reset to original fallback data
+                fallback_apps = ['Mazii', 'Obenkyo', 'Hey Japan', 'JA Sensei', 'Migii JLPT', 'Kanji Study']
+                self.apps_data = {app: self.get_fallback_data(app) for app in fallback_apps}
+                st.session_state.apps_data = self.apps_data
+                st.session_state.confirm_reset = False
+                st.success("✅ Data berhasil direset!")
+                st.rerun()
+            else:
+                st.session_state.confirm_reset = True
+                st.warning("⚠️ Klik sekali lagi untuk konfirmasi reset data")
         
     def load_all_data(self):
         """Load all sentiment data from API with improved error handling"""
@@ -438,6 +485,38 @@ class SentimentAnalysisApp:
         df_ranking = df_ranking[['Rank', 'Aplikasi', 'Total', 'Persentase Positif']]
         st.dataframe(df_ranking, use_container_width=True)
     
+    def save_prediction_to_data(self, app_name, feature, sentiment):
+        """Save prediction result to app data"""
+        try:
+            # Pastikan app_name ada dalam data
+            if app_name not in self.apps_data:
+                self.apps_data[app_name] = {}
+            
+            # Pastikan feature ada dalam app data
+            if feature not in self.apps_data[app_name]:
+                self.apps_data[app_name][feature] = {'positive': 0, 'negative': 0}
+            
+            # Update count berdasarkan sentiment
+            if sentiment == 'positive':
+                self.apps_data[app_name][feature]['positive'] += 1
+            elif sentiment == 'negative':
+                self.apps_data[app_name][feature]['negative'] += 1
+            
+            # Simpan ke session state untuk persistence
+            st.session_state.apps_data = self.apps_data
+            
+            return True
+        except Exception as e:
+            st.error(f"Error saving prediction: {str(e)}")
+            return False
+
+    def load_data_from_session(self):
+        """Load data from session state if available"""
+        if 'apps_data' in st.session_state:
+            self.apps_data = st.session_state.apps_data
+            return True
+        return False
+
     def create_live_prediction(self):
         """Create live sentiment prediction interface with app selection and data update"""
         st.subheader("🤖 Prediksi Sentimen Real-time")
@@ -464,10 +543,37 @@ class SentimentAnalysisApp:
                 )
                 st.metric("Total Ulasan Saat Ini", total_reviews)
         
+        # Feature selection - TAMBAHAN BARU
+        st.subheader("🎯 Pilih Fitur yang Dikomentari")
+        selected_feature = st.selectbox(
+            "Pilih fitur yang ingin Anda komentari:",
+            options=['kanji', 'kotoba', 'bunpou'],
+            format_func=lambda x: {
+                'kanji': '🔤 Kanji - Pembelajaran karakter Jepang',
+                'kotoba': '💬 Kotoba - Kosakata bahasa Jepang', 
+                'bunpou': '📚 Bunpou - Tata bahasa Jepang'
+            }.get(x, x.title()),
+            help="Pilih aspek aplikasi yang akan Anda komentari"
+        )
+        
+        # Show current stats for selected feature
+        if selected_app in self.apps_data and selected_feature in self.apps_data[selected_app]:
+            feature_data = self.apps_data[selected_app][selected_feature]
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Positif", feature_data.get('positive', 0))
+            with col2:
+                st.metric("Negatif", feature_data.get('negative', 0))
+            with col3:
+                total = feature_data.get('positive', 0) + feature_data.get('negative', 0)
+                percentage = (feature_data.get('positive', 0) / total * 100) if total > 0 else 0
+                st.metric("% Positif", f"{percentage:.1f}%")
+        
         # Text input with character counter
         user_input = st.text_area(
             "Tulis ulasan Anda:",
-            placeholder="Contoh: Aplikasi ini sangat membantu untuk belajar kanji, interfacenya mudah digunakan...",
+            placeholder=f"Contoh: Fitur {selected_feature} di aplikasi {selected_app} sangat membantu untuk belajar...",
             help="Minimum 10 karakter untuk prediksi yang akurat",
             max_chars=500
         )
@@ -484,27 +590,44 @@ class SentimentAnalysisApp:
         col1, col2, col3 = st.columns([2, 1, 1])
         
         with col1:
-            predict_button = st.button("🔍 Analisis Sentimen", )
-     
+            predict_button = st.button("🔍 Analisis Sentimen")
         
+        with col2:
+            save_to_data = st.checkbox("💾 Simpan ke Data", value=True, help="Centang untuk menyimpan hasil prediksi ke data aplikasi")
         
         # Perform prediction
         if predict_button and user_input:
             with st.spinner("Menganalisis sentimen..."):
                 prediction = self.ml_predictor.predict_sentiment(user_input)
                 
+                # Save prediction result if checkbox is checked
+                if save_to_data:
+                    success = self.save_prediction_to_data(
+                        selected_app, 
+                        selected_feature, 
+                        prediction['sentiment']
+                    )
+                    
+                    if success:
+                        st.success(f"✅ Data berhasil disimpan ke {selected_app} - {selected_feature}")
+                    else:
+                        st.error("❌ Gagal menyimpan data")
+                
                 # Store prediction in session state
                 st.session_state.last_prediction = {
                     'text': user_input,
                     'app': selected_app,
+                    'feature': selected_feature,  # TAMBAHAN BARU
                     'prediction': prediction,
-                    'timestamp': pd.Timestamp.now().isoformat()
+                    'timestamp': pd.Timestamp.now().isoformat(),
+                    'saved': save_to_data
                 }
         
         # Display prediction results
         if 'last_prediction' in st.session_state and st.session_state.last_prediction:
             self._display_prediction_results(st.session_state.last_prediction)
-        
+
+    # 4. Update method _display_prediction_results untuk menampilkan fitur yang dipilih
     def _display_prediction_results(self, prediction_data):
         """Display prediction results in a formatted way"""
         st.markdown("---")
@@ -512,9 +635,10 @@ class SentimentAnalysisApp:
         
         prediction = prediction_data['prediction']
         selected_app = prediction_data['app']
+        selected_feature = prediction_data.get('feature', 'Unknown')
         
         # Main results
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             sentiment_color = "🟢" if prediction['sentiment'] == 'positive' else "🔴"
@@ -528,43 +652,73 @@ class SentimentAnalysisApp:
             st.metric(
                 "Aplikasi Target", 
                 selected_app,
-                delta="Akan diupdate"
+                delta="Target aplikasi"
             )
         
         with col3:
-            detected_features = prediction.get('features', [])
-            feature_count = len(detected_features)
+            feature_display = {
+                'kanji': '🔤 Kanji',
+                'kotoba': '💬 Kotoba',
+                'bunpou': '📚 Bunpou'
+            }
             st.metric(
-                "Fitur Terdeteksi", 
-                feature_count,
-                delta=f"{', '.join(detected_features) if detected_features else 'Tidak ada'}"
+                "Fitur Dikomentari",
+                feature_display.get(selected_feature, selected_feature),
+                delta="Fitur target"
             )
         
+        with col4:
+            save_status = "✅ Tersimpan" if prediction_data.get('saved', False) else "❌ Tidak disimpan"
+            st.metric(
+                "Status Penyimpanan",
+                save_status,
+                delta=None
+            )
+        
+        # Show updated data if saved
+        if prediction_data.get('saved', False):
+            st.success("🎉 Data berhasil diperbarui!")
+            
+            # Show before/after comparison
+            with st.expander("📈 Perubahan Data", expanded=True):
+                if selected_app in self.apps_data and selected_feature in self.apps_data[selected_app]:
+                    current_data = self.apps_data[selected_app][selected_feature]
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write("**Data Terbaru:**")
+                        st.write(f"• Positif: {current_data.get('positive', 0)}")
+                        st.write(f"• Negatif: {current_data.get('negative', 0)}")
+                        total = current_data.get('positive', 0) + current_data.get('negative', 0)
+                        percentage = (current_data.get('positive', 0) / total * 100) if total > 0 else 0
+                        st.write(f"• Persentase Positif: {percentage:.1f}%")
+                    
+                    with col2:
+                        st.write("**Perubahan:**")
+                        if prediction['sentiment'] == 'positive':
+                            st.write("• Positif: +1 ⬆️")
+                            st.write("• Negatif: +0")
+                        else:
+                            st.write("• Positif: +0")
+                            st.write("• Negatif: +1 ⬆️")
+        
         # Detailed analysis
-        with st.expander("📋 Detail Analisis", expanded=True):
+        with st.expander("📋 Detail Analisis", expanded=False):
             col1, col2 = st.columns(2)
             
             with col1:
-                st.write("**Fitur yang Terdeteksi:**")
-                if detected_features:
-                    for feature in detected_features:
-                        feature_display = {
-                            'kanji': '🔤 Kanji - Pembelajaran karakter Jepang',
-                            'kotoba': '💬 Kotoba - Kosakata bahasa Jepang',
-                            'bunpou': '📚 Bunpou - Tata bahasa Jepang'
-                        }
-                        st.write(f"• {feature_display.get(feature, feature.title())}")
-                else:
-                    st.write("• Tidak ada fitur spesifik terdeteksi")
-                    
-            
+                st.write("**Informasi Prediksi:**")
+                st.write(f"• **Sentimen:** {prediction['sentiment'].title()}")
+                st.write(f"• **Confidence:** {prediction['confidence']:.2f}%")
+                st.write(f"• **Aplikasi:** {selected_app}")
+                st.write(f"• **Fitur:** {selected_feature.title()}")
+                
             with col2:
                 st.write("**Informasi Teknis:**")
-                st.write(f"• **Panjang teks:** {prediction.get('text_length', 0)} karakter")
-                st.write(f"• **Confidence score:** {prediction['confidence']:.2f}%")
+                st.write(f"• **Panjang teks:** {len(prediction_data['text'])} karakter")
                 st.write(f"• **Metode:** {prediction.get('method', 'ML Model')}")
                 st.write(f"• **Timestamp:** {prediction_data['timestamp'][:19]}")
-        
+                st.write(f"• **Disimpan:** {'Ya' if prediction_data.get('saved', False) else 'Tidak'}")
 
     def check_api_connection(self) -> bool:
         """Improved API connection check"""
