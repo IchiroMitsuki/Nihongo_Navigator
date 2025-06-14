@@ -1,3 +1,5 @@
+https://nihongonavigator.streamlit.app/
+
 # 🇯🇵 Japanese App Sentiment Analysis
 
 Sistem Analisis Sentimen untuk Aplikasi Pembelajaran Bahasa Jepang. Proyek ini menggunakan Machine Learning dan visualisasi data untuk menganalisis sentimen pengguna dari berbagai aplikasi belajar bahasa Jepang seperti Mazii, Obenkyo, HeyJapan, JA Sensei, Migii JLPT, dan Kanji Study.
